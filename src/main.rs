@@ -28,7 +28,7 @@ impl StringResponseHandler {
 
 impl Handler for StringResponseHandler {
     fn handle(&self, _: &mut Request) -> IronResult<Response> {
-        Ok(Response::with((status::Ok, self.response_message.clone())))
+        Ok(Response::with((status::Ok, self.response_message.as_str())))
     }
 }
 
