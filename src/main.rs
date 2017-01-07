@@ -1,6 +1,8 @@
 extern crate iron;
 extern crate router;
 
+use std::fmt;
+
 use iron::prelude::*;
 use iron::Handler;
 use iron::status;
@@ -36,12 +38,43 @@ impl Handler for StringResponseHandler {
 }
 
 fn before_printer(req: &mut Request) -> IronResult<()> {
-    println!("Got request: {:?}", &req);
+    stdout_logger.debug(&req);
     Ok(())
 }
 
 fn after_printer(_: &mut Request, res: Response) -> IronResult<Response> {
-    println!("Sending response: {:?}", &res);
+    stdout_logger.debug(&res);
     Ok(res)
 }
 
+trait Logger {
+    fn log(&mut self, &Loggable);
+    
+    fn display(&mut self, entry: &fmt::Display) {
+        self.log(&format!("{}", entry));
+    }
+
+    fn debug(&mut self, entry: &fmt::Debug) {
+        self.log(&format!("{:?}", entry));
+    }
+}
+
+impl<F> Logger for F where F: 'static + Fn(&Loggable) {
+    fn log(&mut self, entry: &Loggable) {
+        self(entry);
+    }
+}
+
+fn stdout_logger(entry: &Loggable) {
+    println!("{}", entry.to_log_entry());
+}
+
+trait Loggable {
+    fn to_log_entry(&self) -> String;
+}
+
+impl Loggable for String {
+    fn to_log_entry(&self) -> String {
+        self.clone()
+    }
+}
