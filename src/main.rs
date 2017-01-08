@@ -15,8 +15,7 @@ fn main() {
     let mut router = Router::new();
     let mut root_handler = Chain::new(StringResponseHandler::new(String::from("Test\n")));
 
-    root_handler.link_before(before_middleware)
-                .link_after(after_middleware);
+    root_handler.link_after(after_middleware);
     router.get("/", root_handler, "index");
     Iron::new(router).http("localhost:9001").unwrap();
 }
@@ -39,18 +38,8 @@ impl Handler for StringResponseHandler {
     }
 }
 
-fn before_middleware(req: &mut Request) -> IronResult<()> {
-    let logger = Box::new(stdout_logger);
-    req.extensions.insert::<Box<Logger>>(logger);
-    Ok(())
-}
-
 fn after_middleware(req: &mut Request, res: Response) -> IronResult<Response> {
-    let logger = req.extensions.remove::<Box<Logger>>();
-    if let Some(mut logger) = logger {
-        logger.debug(&req);
-    }
-
+    req.autolog();
     Ok(res)
 }
 
@@ -72,8 +61,10 @@ impl<F> Logger for F where F: 'static + Fn(&Loggable) {
     }
 }
 
-fn stdout_logger(entry: &Loggable) {
-    println!("{}", entry.to_log_entry());
+impl<'a, 'b> Logger for Request<'a, 'b> {
+    fn log(&mut self, entry: &Loggable) {
+        println!("{}", entry.to_log_entry());
+    }
 }
 
 trait Loggable {
@@ -85,6 +76,21 @@ impl Loggable for String {
         self.clone()
     }
 }
+
+impl<'a, 'b> Loggable for Request<'a, 'b> {
+    fn to_log_entry(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+trait AutoLogger: Logger + Loggable {
+    fn autolog(&mut self) {
+        let entry = self.to_log_entry();
+        self.log(&entry);
+    }
+}
+
+impl<T> AutoLogger for T where T: Logger + Loggable {}
 
 impl Key for Box<Logger> {
     type Value = Box<Logger>;
