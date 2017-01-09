@@ -6,4 +6,6 @@ authors = ["James Crooks <crooks1379@gmail.com>"]
 [dependencies]
 iron = "*"
 router = "*"
+time = "*"
+itertools = "*"
 
